@@ -246,9 +246,9 @@ class WriteProperty:
             bacnet = BAC0.lite()
             r = ['analogValue 1 presentValue 100','analogValue 2 presentValue 100','analogValue 3 presentValue 100 - 8','@obj_142 1 @prop_1042 True']
             bacnet.writeMultiple(addr='2:5',args=r,vendor_id=842)
-            # or 
+            # or
             # bacnet.writeMultiple('2:5',r)
-            
+
         """
         if not self._started:
             raise ApplicationNotStarted("BACnet stack not running - use startApp()")
@@ -295,9 +295,9 @@ class WriteProperty:
             )
         )
 
+        was = []
         for each in args:
             property_values = []
-            was = []
             if isinstance(each, str):
                 obj_type, obj_inst, prop_id, value, priority, indx = self._parse_wp_args(
                     each
@@ -312,21 +312,31 @@ class WriteProperty:
                 obj_type, prop_id, indx, vendor_id, value
             )
 
-            property_values.append(
-                PropertyValue(
-                    propertyIdentifier=prop_id,
-                    propertyArrayIndex=indx,
-                    value=value,
-                    priority=priority,
-                )
-            )
+            existingObject = next((obj for obj in was if obj.objectIdentifier == (obj_type, obj_inst)), None)
 
-            was.append(
-                WriteAccessSpecification(
-                    objectIdentifier=(obj_type, obj_inst),
-                    listOfProperties=property_values,
+            if existingObject == None:
+                property_values.append(
+                    PropertyValue(
+                        propertyIdentifier=prop_id,
+                        propertyArrayIndex=indx,
+                        value=value,
+                        priority=priority,
+                    )
                 )
-            )
+
+                was.append(
+                    WriteAccessSpecification(
+                        objectIdentifier=(obj_type, obj_inst),
+                        listOfProperties=property_values,
+                    )
+                )
+            else:
+                existingObject.listOfProperties.append(PropertyValue(
+                        propertyIdentifier=prop_id,
+                        propertyArrayIndex=indx,
+                        value=value,
+                        priority=priority,
+                    ))
 
             datatype = get_datatype(obj_type, prop_id, vendor_id=vendor_id)
 
